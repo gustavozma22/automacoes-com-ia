@@ -1,0 +1,371 @@
+# =====================================================================
+# MAPA DE CAMPOS DA MIRO - NOTAS FISCAIS DE SERVICO (NFS-e)
+# setembro 2026
+# =====================================================================
+#
+# Formato: CHAVE=id_do_campo_no_sap
+# Chave VAZIA = "nao mapeado". O executor pula a etapa quando ela e
+# opcional e RETEM a nota quando ela e obrigatoria. Nunca adivinha.
+#
+# PROCEDENCIA DE CADA ID - leia antes de confiar:
+#   [G-SERV] capturado na gravacao de servicos (Script1.vbs, NF 00000123,
+#            pedido 4500000006, empresa 1000, 02/09/2026).
+#   [G-NFCOM] reaproveitado do MAPA_CAMPOS.txt do projeto NFCOM. Mesma
+#            transacao MIRO e mesmo caminho de subtela, mas NAO foi
+#            reconfirmado numa gravacao de servicos. Confirmar com o
+#            VER_CAMPOS_SERVICOS.vbs antes do piloto.
+#   [PENDENTE] ainda nao capturado. Fica vazio de proposito.
+#
+# Se o SAP mudar de tela, regrave e edite ESTE arquivo - o executor nao
+# precisa ser alterado.
+# =====================================================================
+
+
+# --- Onde este lote pode rodar ---------------------------------------
+# Formato SISTEMA/MANDANTE, separados por | . Fora da lista, aborta.
+# Com mais de um item, o executor SEMPRE pede confirmacao do ambiente:
+# o lote nao sabe para qual dos dois foi montado.
+SAP_AMBIENTES_PERMITIDOS=PRD/100|QAS/200
+
+# --- Modo de operacao -------------------------------------------------
+# Vazio (ou LANCAR) = lanca o lote. DESPEJO = nao lanca nada: fotografa
+# a tela SAP aberta num CAMPOS_<data>.txt e sai. O despejo e somente
+# leitura e roda em qualquer ambiente, sem abrir a planilha.
+# Tambem da para pedir despejo sem editar este arquivo, passando o
+# argumento na linha de comando:
+#     cscript LANCAR_SERVICOS.vbs DESPEJO
+# (ou um atalho do Windows com esse argumento no Destino).
+MODO=
+
+# Aviso, nao trava. Quem lanca e sempre quem esta logado no SAP.
+# Vazio = sem aviso.
+SAP_USUARIO_ESPERADO=SEU_USUARIO_SAP
+# --- Popup de empresa (aparece na primeira MIRO da sessao) -----------
+# [G-SERV] a gravacao de servicos comecou por aqui, com 1000 (empresa de teste).
+# O valor vem da coluna EMPRESA COD da planilha de lote, nao daqui.
+MIRO_POPUP_EMPRESA=wnd[1]/usr/ctxtBKPF-BUKRS
+# [G-SERV] gesto da gravacao 1 (popup que aparece sozinho ao abrir a MIRO)
+MIRO_POPUP_EMPRESA_OK=wnd[1]/tbar[0]/btn[0]
+# [G-SERV2] gesto da gravacao 2 (Script2.vbs, troca de empresa pelo menu):
+# ali o popup e confirmado com Enter NA wnd[1], nao pelo btn[0].
+# Sao dois popups parecidos com gestos gravados diferentes. Cada caminho
+# usa o gesto que foi gravado NELE - nao se presume que um serve ao outro.
+MIRO_POPUP_EMPRESA_TECLA=0
+MIRO_POPUP_EMPRESA_TECLA_JANELA=wnd[1]
+
+
+# --- Cabecalho: aba "Dados basicos" (tabpHEADER_TOTAL) ---------------
+# [G-SERV] identicos aos do NFCOM, confirmados na gravacao de servicos.
+MIRO_DATA_FATURA=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/tabsHEADER/tabpHEADER_TOTAL/ssubHEADER_SCREEN:SAPLFDCB:0010/ctxtINVFO-BLDAT
+MIRO_REFERENCIA=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/tabsHEADER/tabpHEADER_TOTAL/ssubHEADER_SCREEN:SAPLFDCB:0010/txtINVFO-XBLNR
+MIRO_MONTANTE=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/tabsHEADER/tabpHEADER_TOTAL/ssubHEADER_SCREEN:SAPLFDCB:0010/txtINVFO-WRBTR
+MIRO_ABA_DADOS_BASICOS=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/tabsHEADER/tabpHEADER_TOTAL
+
+# --- Local de negocio (BUPLA) ----------------------------------------
+# [G-SERV] campo capturado no despejo NF_NAO_ABRIU_00005678 (02/09/2026),
+# onde estava VAZIO enquanto a barra de status dizia:
+#   "Local de negocio XXXX nao encontrado na estrutura do empreendimento"
+MIRO_LOCAL_NEGOCIO=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/tabsHEADER/tabpHEADER_TOTAL/ssubHEADER_SCREEN:SAPLFDCB:0010/ctxtINVFO-BUPLA
+# [PENDENTE] o VALOR. Provavelmente varia por empresa: a BASE RECORRENTE
+# traz, para outra empresa, organizacao de compras XXXX e centro YYYY - e o SAP
+# recusou justamente o XXXX. Enquanto esta chave estiver vazia o executor
+# nao escreve nada e deixa o SAP derivar. Nao preencher com palpite:
+# local de negocio errado troca o estabelecimento fiscal do documento.
+MIRO_LOCAL_NEGOCIO_VALOR=
+
+
+# --- Pedido: nota de UM pedido ---------------------------------------
+# [G-SERV] digita o pedido e da Enter. A MIRO adota o item sozinha.
+MIRO_PEDIDO_UNICO=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/subITEMS:SAPLMR1M:6010/tabsITEMTAB/tabpITEMS_PO/ssubTABS:SAPLMR1M:6020/subREFERENZBELEG:SAPLMR1M:6211/ctxtRM08M-EBELN
+# [G-SERV] achado no despejo: existe campo de ITEM ao lado do pedido.
+# VAZIO DE PROPOSITO: o dono do processo confirmou em 02/09/2026 que a
+# MIRO traz SO o item pendente do pedido. Preencher isto faria o
+# executor restringir o item sem necessidade. Se um dia aparecer pedido
+# trazendo item ja faturado, este e o campo para usar - mas preencher
+# esta chave sozinha NAO muda nada: o executor ainda nao le. Precisaria
+# de alteracao no codigo junto.
+MIRO_ITEM_UNICO=
+# [G-SERV] semaforo da MIRO. Leitura opcional, so para diagnostico.
+MIRO_SEMAFORO=wnd[0]/usr/txtRM08M-AMPEL
+
+
+# --- Pedido: nota BUNDLADA (varios pedidos) --------------------------
+# [G-SERV] CONFIRMADO no despejo: btnRM08M-XMSEL existe nesse container
+# na MIRO de servicos, no mesmo caminho do NFCOM.
+MIRO_BOTAO_MULTIPLOS_PEDIDOS=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/subITEMS:SAPLMR1M:6010/tabsITEMTAB/tabpITEMS_PO/ssubTABS:SAPLMR1M:6020/subREFERENZBELEG:SAPLMR1M:6211/btnRM08M-XMSEL
+# [G-NFCOM] coluna de pedido dentro da janela. {L} = linha (0, 1, 2...)
+MIRO_PEDIDO_LINHA=wnd[1]/usr/subMSEL:SAPLMR1M:6221/tblSAPLMR1MTC_MSEL_BEST/ctxtRM08M-EBELN[0,{L}]
+# VAZIO DE PROPOSITO: em PRD, o "Verificar" desta janela deixava o
+# "Adotar" sem transferir nenhum item. Nao repreencher sem gravacao nova.
+MIRO_BOTAO_CONTINUAR_PEDIDOS=
+# [G-NFCOM] "Adotar"
+MIRO_BOTAO_ADOTAR_PEDIDOS=wnd[1]/tbar[0]/btn[8]
+
+
+# --- Grade de itens (usada no rateio da nota bundlada) ---------------
+# [G-NFCOM] {L} = linha da grade. Casamento SEMPRE por valor de pedido
+# lido em MIRO_PEDIDO_ITEM_LINHA, nunca por posicao.
+MIRO_VALOR_ITEM_LINHA=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/subITEMS:SAPLMR1M:6010/tabsITEMTAB/tabpITEMS_PO/ssubTABS:SAPLMR1M:6020/subITEM:SAPLMR1M:6310/tblSAPLMR1MTC_MR1M/txtDRSEG-WRBTR[3,{L}]
+MIRO_PEDIDO_ITEM_LINHA=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/subITEMS:SAPLMR1M:6010/tabsITEMTAB/tabpITEMS_PO/ssubTABS:SAPLMR1M:6020/subITEM:SAPLMR1M:6310/tblSAPLMR1MTC_MR1M/txtDRSEG-EBELN[7,{L}]
+MIRO_ITEM_PEDIDO_LINHA=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/subITEMS:SAPLMR1M:6010/tabsITEMTAB/tabpITEMS_PO/ssubTABS:SAPLMR1M:6020/subITEM:SAPLMR1M:6310/tblSAPLMR1MTC_MR1M/txtDRSEG-EBELP[8,{L}]
+# COLUNA DA QUANTIDADE. Quando a MIRO traz o pedido SEM quantidade, o
+# executor informa 1 - e so nesse caso; quantidade ja preenchida ele nao
+# encosta. Isso vai ANTES do valor liquido, porque informar quantidade
+# faz o SAP recalcular o montante da linha.
+# Quantidade em branco costuma ser sintoma de entrada de mercadoria
+# pendente no pedido: preencher resolve a tela, nao resolve o pedido.
+# Toda vez que ele informa 1, isso e registrado na coluna ERRO como
+# OBSERVACAO.
+# Vazio = o executor procura DRSEG-MENGE sozinho entre os campos da
+# tabela e anota o ID achado em IDS_DESCOBERTOS.txt. Cole a linha de la
+# aqui depois, para a busca nao se repetir a cada nota.
+MIRO_QTD_ITEM_LINHA=
+
+# --- Preparar a grade antes de ler ------------------------------------
+# [G-BOLETO1] gravacao ReciboBoleto1.vbs, 03/09/2026, feita para corrigir
+# uma leitura errada da grade: numa nota de UM pedido o executor leu DOIS
+# itens e reteve, com o diagnostico "GetCell(2,7) falhou".
+# Dois gestos, nessa ordem:
+#   1) alargar a coluna do VALOR - em GuiTableControl o GetCell devolve o
+#      texto COMO ESTA RENDERIZADO, entao coluna estreita trunca leitura;
+#   2) apertar o REFRESH da grade e dar Enter, que remonta a lista.
+# Valem para os quatro tipos: a grade e a mesma em NFS-e e em recibo.
+# Largura vazia = nao mexer na coluna. Botao vazio = nao apertar.
+MIRO_BOTAO_REFRESH_GRADE=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/subITEMS:SAPLMR1M:6010/tabsITEMTAB/tabpITEMS_PO/ssubTABS:SAPLMR1M:6020/subITEM:SAPLMR1M:6310/btnREFRESH
+MIRO_LARGURA_COLUNA_VALOR=16
+
+# INFORMATIVO. O executor NAO le estas duas chaves: ele separa a tabela
+# e o indice da coluna do proprio ID do campo (tudo antes da ultima "/"
+# e o numero dentro de "[coluna,linha]"). Ficam aqui so para leitura
+# humana. Mudar uma delas nao muda o comportamento - mude o ID do campo.
+MIRO_TABELA_ITENS=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/subITEMS:SAPLMR1M:6010/tabsITEMTAB/tabpITEMS_PO/ssubTABS:SAPLMR1M:6020/subITEM:SAPLMR1M:6310/tblSAPLMR1MTC_MR1M
+MIRO_TABELA_PEDIDOS=wnd[1]/usr/subMSEL:SAPLMR1M:6221/tblSAPLMR1MTC_MSEL_BEST
+
+# [G-SERV2] CONFIRMADO na gravacao 2 (Script2.vbs, 03/09/2026): menu
+# Processar > Mudar empresa. Antes estava apenas achado no despejo.
+# O popup de empresa so aparece sozinho na PRIMEIRA MIRO da sessao. Sem
+# este menu, a segunda nota do lote herdaria a empresa da primeira e
+# poderia gravar documento na empresa errada sem ninguem perceber.
+MIRO_MENU_MUDAR_EMPRESA=wnd[0]/mbar/menu[1]/menu[0]
+
+# Guarda contra laco desgovernado - nao e limite de trabalho.
+MAX_PEDIDOS_POR_NOTA=500
+MAX_ROLAGENS=60
+
+
+# --- Aba "Detalhe" (tabpHEADER_FI): categoria da NF ------------------
+# [G-SERV] categoria "zh" para toda NFS-e, confirmado pelo dono do
+# processo em 02/09/2026. Valor abaixo, nao no script.
+MIRO_ABA_DETALHE=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/tabsHEADER/tabpHEADER_FI
+MIRO_TIPO_NF=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/tabsHEADER/tabpHEADER_FI/ssubHEADER_SCREEN:SAPLFDCB:0150/ctxtINVFO-J_1BNFTYPE
+# Valor escrito no campo Categoria NF quando, e SOMENTE quando, o TIPO
+# NF da linha for ZH. Recibo nao passa pela aba Detalhe: e justamente a
+# ausencia de categoria que faz do documento um recibo.
+MIRO_TIPO_NF_VALOR=zh
+
+# --- TIPOS DE LINHA --------------------------------------------------
+# A coluna TIPO NF do lote decide o caminho inteiro. Valor fora desta
+# lista, ou vazio, RETEM: vazio na planilha significa "ainda nao
+# preenchi", e tratar isso como recibo gravaria documento sem a tela
+# Nota Fiscal.
+TIPOS_ACEITOS=ZH|RECIBO SEM DOC|RECIBO FATURA|RECIBO BOLETO
+
+# --- NFS-e SEM identificador nacional ---------------------------------
+# Nem toda prefeitura usa o padrao nacional de 50 digitos. Confirmado
+# nos dados de setembro/2026: Sao Paulo (3550308) e Rio (3304557) usam;
+# municipio de exemplo, na NF 00009876 da fornecedor de exemplo, nao usa - a nota traz so o codigo
+# de verificacao. Por isso o discriminador e A PROPRIA CHAVE, decidido
+# pelo dono do processo em 03/09/2026, e nao o municipio: "fora de SP
+# nao tem chave" e falso, a NF 00000222 do Rio lancou com chave completa.
+#
+# ZH COM chave  -> preenche numero, codigo de verificacao, data, hora,
+#                  ambiente gerador, DOCNUM9 e digito verificador.
+# ZH SEM chave  -> preenche numero, codigo de verificacao, data e hora,
+#                  e para por ai. Volta para a MIRO e lanca.
+# A chave e tudo ou nada: se vier com qualquer coisa que nao seja vazio
+# ou 50 digitos, RETEM - chave pela metade nao se completa.
+ZH_SEM_CHAVE_PERMITIDO=SIM
+
+# Separadores retirados do codigo de verificacao APENAS no modelo SEM
+# chave. Letras e numeros ficam: AB12.3456.7890.1234567-X vira
+# AB12345678901234567X. Confirmado pelo dono do processo em 03/09/2026.
+# ATENCAO: nota COM chave escreve o codigo em COPIA LITERAL, com hifen.
+# As gravacoes 1 e 3 fizeram assim (ABCD-1234, EFGH-5678) e os seis
+# documentos de setembro sairam assim. Aplicar a limpeza nelas seria
+# mudar um campo fiscal num caminho que ja esta provado.
+COD_VERIFICACAO_LIMPAR=.- /
+# --- De onde sai a Referencia (INVFO-XBLNR), por tipo -----------------
+# ZH            -> numero da NF, copia literal
+# RECIBO FATURA -> numero da fatura, copia literal
+# RECIBO SEM DOC-> os N ultimos digitos do PEDIDO
+#                  (gravacao ReciboSemDoc: 4500001234 -> 1234)
+# RECIBO BOLETO -> os N ultimos digitos do NOSSO NUMERO do banco
+#                  (000/00012345-6 -> 3456), contando o digito
+#                  verificador. Confirmado pelo dono do processo em
+#                  03/09/2026. Barra e hifen nao contam: so algarismos.
+REF_SEM_DOC_DIGITOS=4
+REF_BOLETO_DIGITOS=4
+# [G-RECIBO] as tres gravacoes de recibo simulam pela TECLA 43, nao pelo
+# botao. A de NFS-e usa o botao. Cada caminho repete o seu gesto.
+MIRO_TECLA_SIMULAR=43
+
+
+# --- Aba "Imposto retido na fonte" (tabpHEADER_WT) -------------------
+# [G-SERV] a aba existe e foi visitada na gravacao, mas NADA foi
+# digitado nela - aquela nota nao tinha PCC manual.
+MIRO_ABA_IMPOSTO_RETIDO=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/tabsHEADER/tabpHEADER_WT
+# [PENDENTE] os campos de dentro. Enquanto vazios, o executor RETEM
+# qualquer nota com TIPO DE PAGAMENTO = BOLETO e PCC a informar.
+# Captura: abrir uma MIRO de boleto, ir nesta aba e rodar o
+# VER_CAMPOS_SERVICOS.vbs; ou gravar o lancamento manual de uma dessas.
+WT_TABELA=
+WT_TIPO_LINHA=
+WT_BASE_LINHA=
+WT_VALOR_LINHA=
+# De onde sai o valor do PCC: VALIDACAO = coluna CONTRIBUICOES SOCIAIS -
+# RETIDAS da planilha. O executor transcreve, nunca calcula aliquota.
+#
+# COMO A TRAVA DECIDE (corrigido em 03/09/2026):
+# quem manda e a coluna RETENCAO do lote, nao a forma de pagamento.
+# A versao anterior retinha toda linha com TIPO DE PAGAMENTO = BOLETO,
+# presumindo que boleto implica PCC a informar. Nao implica: o boleto de
+# condominio 000/00012345-6 nao tem retencao nenhuma e foi retido a toa.
+# Com o tipo RECIBO BOLETO isso reteria toda conta de condominio.
+# Forma de pagamento so volta a importar quando WT_TABELA estiver
+# preenchido - ai sim boleto pede PCC a mao e transferencia nao.
+PCC_ORIGEM=VALIDACAO
+# FASE 1 (setembro/2026): o dono do processo informou que nota com
+# retencao e rara. Enquanto WT_* estiver vazio, o executor RETEM nota
+# com TIPO DE PAGAMENTO = BOLETO e PCC a informar, com motivo legivel.
+# Quando aparecer uma, gravar o lancamento manual e preencher aqui.
+# IR: o SAP calcula pelo cadastro do fornecedor. O executor apenas RELE
+# e compara com a coluna IR da planilha. Divergencia retem a nota.
+IR_MODO=CONFERIR
+
+
+# --- Tela da Nota Fiscal ---------------------------------------------
+# [G-SERV] a gravacao de servicos chega la por TECLA (sendVKey 21), nao
+# pelo botao. Mantido como na gravacao: se a gravacao faz, o script faz.
+MIRO_TECLA_NOTA_FISCAL=21
+# [G-SERV] o botao existe e se chama "Nota fiscal" - confirmado no
+# despejo NF_NAO_ABRIU_00005678, na tbar[1] da MIRO com itens. Fica
+# VAZIO porque a gravacao de servicos chega la pela tecla, e a tecla e
+# o gesto gravado. Este ID esta aqui para o dia em que a tecla falhar.
+# (No mesmo despejo: btn[43]="Simular" e btn[13]="Mensagens".)
+MIRO_BOTAO_NOTA_FISCAL=
+NF_BOTAO_VOLTAR=wnd[0]/tbar[0]/btn[3]
+
+# Aba "Mensagens" - recebe a coluna OUTRAS INFORMACOES da planilha.
+# [G-SERV] duas linhas usadas na gravacao. {L} = linha (0, 1, 2...)
+NF_ABA_MENSAGENS=wnd[0]/usr/tabsTABSTRIP1/tabpTAB4
+NF_TABELA_MENSAGENS=wnd[0]/usr/tabsTABSTRIP1/tabpTAB4/ssubHEADER_TAB:SAPLJ1BB2:2400/tblSAPLJ1BB2MESSAGE_CONTROL
+NF_MENSAGEM_LINHA=wnd[0]/usr/tabsTABSTRIP1/tabpTAB4/ssubHEADER_TAB:SAPLJ1BB2:2400/tblSAPLJ1BB2MESSAGE_CONTROL/txtJ_1BDYFTX-MESSAGE[0,{L}]
+# [PROVADO] 65 caracteres por linha - o cabecalho da coluna OUTRAS
+# INFORMACOES na VALIDACAO.xlsx diz "(LIMITE 65 CARACTERES)", e a
+# NF 00005678 quebra em 62 / 58 / 11 caracteres exatamente nesse limite.
+# Linha acima do limite RETEM a nota: texto fiscal nao e truncado.
+NF_MENSAGEM_LIMITE_CARACTERES=65
+# Vazio de proposito: quantas linhas a tela oferece nao foi capturado.
+# O executor descobre na hora - escreve, rele, e retem se nao ficou.
+NF_MENSAGEM_MAX_LINHAS=
+
+# Aba de identificacao da NFS-e (tabpTAB8)
+# [G-SERV] todos capturados. Note que o AUTHTIME veio da gravacao -
+# no NFCOM esse ID tinha sido DEDUZIDO e derrubou um lote.
+NF_ABA=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8
+NF_NUM_NF=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8/ssubHEADER_TAB:SAPLJ1BB2:2800/txtJ_1BDYDOC-PREFNO
+NF_COD_VERIFICACAO=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8/ssubHEADER_TAB:SAPLJ1BB2:2800/txtJ_1BDYDOC-CHECOD
+NF_DATA_PROCMTO=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8/ssubHEADER_TAB:SAPLJ1BB2:2800/subTIMESTAMP:SAPLJ1BB2:2804/ctxtJ_1BDYDOC-AUTHDATE
+NF_TEMPO_PROCMTO=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8/ssubHEADER_TAB:SAPLJ1BB2:2800/subTIMESTAMP:SAPLJ1BB2:2804/ctxtJ_1BDYDOC-AUTHTIME
+NF_AMBIENTE_GERADOR=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8/ssubHEADER_TAB:SAPLJ1BB2:2800/subACCESS_KEY:SAPLJ1BB2:2807/ctxtNFE_NFSE_ACCESS_KEY-AMBGER
+# ATENCAO: NAO e fixo. A gravacao trouxe 1, mas 2 das 37 chaves da
+# VALIDACAO trazem 2 (notas do CNPJ 11222333000181 e uma do RJ).
+# O valor sai da posicao 8 do Identificador Nacional.
+NF_AMBIENTE_GERADOR_ORIGEM=CHAVE[8]
+NF_DOCNUM9=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8/ssubHEADER_TAB:SAPLJ1BB2:2800/subACCESS_KEY:SAPLJ1BB2:2807/txtNFE_NFSE_ACCESS_KEY-DOCNUM9
+# [PROVADO] posicoes 41 a 49 do Identificador Nacional (ver secao
+# CHAVE mais abaixo). Conferido contra as 37 chaves da VALIDACAO.xlsx.
+NF_DOCNUM9_ORIGEM=CHAVE[41-49]
+
+# --- Digito verificador da chave -------------------------------------
+# [G-SERV3] CORRIGE UMA PREMISSA ERRADA. Ate a gravacao 3 (Script3.vbs,
+# NF 00000333, 03/09/2026) este mapa dizia que "o SAP calcula sozinho" -
+# heranca do projeto NFCOM, onde era assim. Em NFS-e NAO e: existe um
+# campo proprio e o digito e DIGITADO, depois de um Enter no DOCNUM9.
+# Sequencia gravada: ... DOCNUM9 -> Enter -> CDV -> Enter.
+NF_DIGITO_VERIFICADOR=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8/ssubHEADER_TAB:SAPLJ1BB2:2800/subACCESS_KEY:SAPLJ1BB2:2807/txtNFE_NFSE_ACCESS_KEY-CDV
+# Posicao 50 da chave. Na gravacao 3: chave da NF 00000333 termina em 7,
+# e foi 7 que o campo recebeu.
+NF_DIGITO_VERIFICADOR_ORIGEM=CHAVE[50]
+
+
+# --- Saldo (Diferenca) -----------------------------------------------
+# [G-SERV] CONFIRMADO no despejo de 02/09/2026 (PRD/100):
+#   txtRM08M-DIFFERENZ existe e trazia texto=[0,00 ] - note o espaco no
+#   fim, o executor faz Trim antes de comparar.
+# O executor SO lanca com este campo em 0,00 exatos. Se nao
+# conseguir LER o saldo, tambem nao lanca: sem prova, retem.
+# Vazio faz o executor procurar sozinho e anotar em SALDO_ID.txt.
+MIRO_SALDO=wnd[0]/usr/txtRM08M-DIFFERENZ
+# Tolerancia em centavos. O executor CONFERE esta chave ao iniciar e se
+# recusa a rodar se ela nao estiver em zero, porque ele nao implementa
+# correcao de base em servicos - uma chave que promete o que o codigo
+# nao faz e pior do que chave nenhuma.
+# ZERO de proposito em servicos: aqui nao existe rateio de ICMS linha a
+# linha como no NFCOM, e o dono do processo definiu que nota com valor
+# diferente do pedido NAO e lancada. Nada de ajuste automatico.
+NF_TOLERANCIA_CENTAVOS=0
+
+
+# --- Gravacao --------------------------------------------------------
+# [G-SERV + G-NFCOM] os dois projetos gravaram os mesmos dois passos.
+MIRO_BOTAO_SIMULAR=wnd[0]/tbar[1]/btn[43]
+# "Lancar", DENTRO da janela de simulacao
+MIRO_BOTAO_GRAVAR=wnd[1]/tbar[0]/btn[11]
+# Barra de status: e dela que o executor le o numero do documento.
+MIRO_BARRA_STATUS=wnd[0]/sbar
+# Pre-lancamento (park). Nao gravado. Enquanto vazio, o executor
+# RECUSA lote em MODO=PARK - nunca troca PARK por POST.
+MIRO_BOTAO_PRE_LANCAR=
+
+
+# =====================================================================
+# IDENTIFICADOR NACIONAL DA NFS-e - 50 DIGITOS
+# =====================================================================
+# Layout DERIVADO E CONFERIDO contra as 37 chaves completas que existem
+# na VALIDACAO.xlsx (abas JULHO, AGOSTO, SETEMBRO, LANCADAS, CANCELADAS).
+# Acerto: 37/37 em CNPJ, numero da NF, AAMM e digito verificador.
+#
+#   posicoes 1-7    codigo IBGE do municipio emissor
+#                   (3550308 = Sao Paulo; 3304557 = Rio de Janeiro)
+#   posicao  8      ambiente gerador -> vai em NF_AMBIENTE_GERADOR
+#                   (aparecem 1 e 2; NUNCA fixar)
+#   posicao  9      tipo de inscricao federal (2 em todas as 37)
+#   posicoes 10-23  CNPJ do emitente, 14 digitos
+#   posicoes 24-36  numero da NFS-e, 13 digitos com zeros a esquerda
+#   posicoes 37-40  AAMM da emissao (2609 = setembro/2026)
+#   posicoes 41-49  codigo numerico -> vai em NF_DOCNUM9
+#   posicao  50     digito verificador -> vai em NF_DIGITO_VERIFICADOR
+#                   (DIGITADO, o SAP nao calcula - ver gravacao 3)
+#
+# Digito verificador: modulo 11 sobre os 49 primeiros digitos, pesos
+# ciclicos de 2 a 9 da direita para a esquerda, DV = 11 - resto, e
+# 0 quando o resultado for 10 ou 11. Confere em 37/37.
+#
+# TRAVAS QUE ESTE LAYOUT PERMITE (todas antes de a nota entrar no lote):
+CHAVE_TAMANHO=50
+# posicoes 10-23 devem bater com a coluna CNPJ DO FORNECEDOR
+CHAVE_CONFERIR_CNPJ=SIM
+# posicoes 24-36 devem bater com a coluna NUMERO DA NF
+CHAVE_CONFERIR_NUMERO=SIM
+# posicoes 37-40 devem bater com a coluna DATA DE EMISSAO
+CHAVE_CONFERIR_COMPETENCIA=SIM
+# posicao 50 deve fechar pelo modulo 11 descrito acima
+CHAVE_CONFERIR_DV=SIM
+# Chave ilegivel, truncada ou gravada em notacao cientifica na planilha
+# NAO e corrigida nem reconstruida: a nota fica retida.
+CHAVE_RECONSTRUIR=NAO
+
+# Tipos da coluna TIPO DE NF que pertencem ao executor de NFCOM.
+# A planilha LOTE e compartilhada; o que nao esta aqui e do LANCAR_SERVICOS.vbs.
+TIPOS_NFCOM=TA

@@ -1,0 +1,37 @@
+{
+  "_comentario": "Arquivo de exemplo com dados ficticios. Em uso real, e gerado a partir da planilha base de pedidos (coluna RECEBIMENTO DA NOTA = E-MAIL).",
+  "caixa_compartilhada": "faturas@empresa-exemplo.com.br",
+  "prefixo_pasta_outlook": "Faturas",
+  "extensoes": [
+    ".pdf",
+    ".xml"
+  ],
+  "regex_boleto": "(?i)boleto|^\\d{6}B\\d",
+  "regex_nota": "(?i)nfcom|nfs-?e|nfe|nf-e|nota|danfe|danfcom|^nf[ _-]|^\\d{6}N\\d|fatura|\\.xml$",
+  "regex_revisar": "(?i)^\\d{44}-nfe\\.xml$|^ID\\d{6}|cnfe|cancel",
+  "operadoras_portal_ignoradas": [
+    "OPERADORA C (portal)"
+  ],
+  "operadoras_manuais_ignoradas": [
+    "OPERADORA D (manual)"
+  ],
+  "operadoras_email": [
+    {
+      "fornecedor_base": "OPERADORA A TELECOMUNICACOES LTDA",
+      "recebimento": "E-MAIL",
+      "regex_pasta": "operadora ?a",
+      "remetentes": [
+        "faturamento@operadora-a.exemplo"
+      ]
+    },
+    {
+      "fornecedor_base": "OPERADORA B INTERNET LTDA",
+      "recebimento": "E-MAIL",
+      "regex_pasta": "operadora ?b",
+      "remetentes": [
+        "nfe@operadora-b.exemplo",
+        "cobranca@operadora-b.exemplo"
+      ]
+    }
+  ]
+}

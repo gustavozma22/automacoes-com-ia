@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar pytest
+        run: pip install pytest
+
+      - name: Testes do linter e do verificador de dados sensiveis
+        run: pytest -q tests
+
+      - name: Lint dos scripts VBScript
+        run: |
+          python tools/lint_vbs.py 01_lancamento-nfcom-sap-miro/LANCAR_NFCOM.vbs 01_lancamento-nfcom-sap-miro/MAPA_CAMPOS.txt 03_bipagem-boletos-sap/MAPA_CAMPOS_BOLETO.txt
+          python tools/lint_vbs.py 01_lancamento-nfcom-sap-miro/ferramentas/VER_IMPOSTO.vbs
+          python tools/lint_vbs.py 02_lancamento-nfse-sap-miro/LANCAR_SERVICOS.vbs 02_lancamento-nfse-sap-miro/MAPA_CAMPOS_SERVICOS.txt
+          python tools/lint_vbs.py 03_bipagem-boletos-sap/LANCAR_BOLETOS.vbs 03_bipagem-boletos-sap/MAPA_CAMPOS_BOLETO.txt
+          python tools/lint_vbs.py 04_download-faturas-outlook-e-agendamento/LANCAR_TUDO.vbs
+          python tools/lint_vbs.py 05_cotacao-dolar-ptax-sap/LANCAMENTO_DOLAR_SAP.vbs
+
+      - name: Nenhum dado real no repositorio
+        run: python tools/verificar_dados_sensiveis.py .
+
+  powershell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PSScriptAnalyzer (apenas erros)
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+          $r = Invoke-ScriptAnalyzer -Path 04_download-faturas-outlook-e-agendamento -Recurse -Severity Error
+          $r | Format-Table -AutoSize
+          if ($r) { exit 1 }

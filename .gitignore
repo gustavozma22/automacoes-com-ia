@@ -1,0 +1,28 @@
+# Dados reais nunca entram neste repositório
+*.xlsx
+!exemplos/*.xlsx
+*.xlsm
+*.xls
+*.csv
+*.pdf
+*.xml
+*.zip
+*.bak*
+*.json
+!**/*.exemplo.json
+*_log*.txt
+CAMPOS_*.txt
+GRADE_VAZIA*.txt
+POPUP_*.txt
+SALDO_FORA*.txt
+~$*
+.~lock*
+Thumbs.db
+desktop.ini
+
+# Lista local de termos proibidos (nomes reais) usada por tools/verificar_dados_sensiveis.py
+.termos-proibidos.txt
+
+# Python
+__pycache__/
+.pytest_cache/

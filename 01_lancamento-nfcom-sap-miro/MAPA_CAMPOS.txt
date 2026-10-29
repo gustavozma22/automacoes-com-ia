@@ -1,0 +1,166 @@
+# =====================================================================
+# MAPA DE CAMPOS DA MIRO - PROJETO DE AUTOMACAO COM IA
+# =====================================================================
+#
+# PREENCHIDO a partir da gravacao real de tela (Fase 3), agosto/2026:
+# NF 1234-56, pedidos 4500000001 e 4500000002.
+#
+# Se o SAP for atualizado ou a tela mudar, basta regravar e reeditar
+# ESTE arquivo - o LANCAR_NFCOM.vbs nao precisa ser alterado.
+#
+# Formato: CHAVE=id_do_campo_no_sap
+# Chave vazia = "nao mapeado". O executor pula a etapa correspondente
+# quando ela e opcional, e RETEM a nota quando ela e obrigatoria.
+# =====================================================================
+
+# --- Em qual sistema este lote pode rodar ----------------------------
+# O script se anexa a PRIMEIRA conexao SAP aberta. Se o usuario tiver
+# duas janelas (por exemplo QAS e producao), sem esta trava ele pode
+# lancar no ambiente errado sem ninguem perceber.
+#
+# Preencha com o ID do sistema e o mandante em que este lote DEVE rodar
+# (aparece no rodape do SAP, ex.: PRD / 100). Se os dois estiverem
+# preenchidos, o script aborta em silencio quando a sessao nao bate.
+# Se ficarem vazios, ele pergunta antes de comecar, mostrando em qual
+# sistema, mandante e usuario esta prestes a lancar.
+# Ambientes em que este processo pode rodar, separados por |
+# no formato SISTEMA/MANDANTE. Fora dessa lista, o executor aborta.
+# Com mais de um item aqui, o executor SEMPRE pede confirmacao do
+# ambiente antes de lancar - o lote nao sabe para qual ele foi montado.
+SAP_AMBIENTES_PERMITIDOS=PRD/100|QAS/200
+# As duas linhas abaixo sao o modo antigo, de ambiente unico. Ficam
+# vazias: quando SAP_AMBIENTES_PERMITIDOS esta preenchido, ele manda.
+SAP_SISTEMA_ESPERADO=
+SAP_MANDANTE_ESPERADO=
+
+# Usuario SAP habitual deste processo (opcional).
+# ATENCAO: isto NAO escolhe o usuario. Quem lanca e sempre quem esta
+# logado no SAP - o script nao faz login e nao troca de usuario. Esta
+# linha serve so como aviso: se a sessao estiver em outro usuario, o
+# script mostra um alerta e pede confirmacao antes de comecar.
+# Nao bloqueia: um substituto legitimo confirma e segue. Quem
+# efetivamente rodou fica registrado na coluna EXECUTADO POR.
+# Vazio = sem aviso.
+SAP_USUARIO_ESPERADO=SEU_USUARIO_SAP
+
+# --- Cabecalho (aba "Dados basicos" = tabpHEADER_TOTAL) --------------
+MIRO_DATA_FATURA=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/tabsHEADER/tabpHEADER_TOTAL/ssubHEADER_SCREEN:SAPLFDCB:0010/ctxtINVFO-BLDAT
+MIRO_REFERENCIA=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/tabsHEADER/tabpHEADER_TOTAL/ssubHEADER_SCREEN:SAPLFDCB:0010/txtINVFO-XBLNR
+MIRO_MONTANTE=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/tabsHEADER/tabpHEADER_TOTAL/ssubHEADER_SCREEN:SAPLFDCB:0010/txtINVFO-WRBTR
+
+# --- Selecao multipla de pedidos ------------------------------------
+MIRO_BOTAO_MULTIPLOS_PEDIDOS=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/subITEMS:SAPLMR1M:6010/tabsITEMTAB/tabpITEMS_PO/ssubTABS:SAPLMR1M:6020/subREFERENZBELEG:SAPLMR1M:6211/btnRM08M-XMSEL
+# Coluna de pedido dentro da janela. {L} = numero da linha (0, 1, 2...)
+MIRO_PEDIDO_LINHA=wnd[1]/usr/subMSEL:SAPLMR1M:6221/tblSAPLMR1MTC_MSEL_BEST/ctxtRM08M-EBELN[0,{L}]
+# Enter, depois "Adotar"
+# btn[0] da janela de pedidos e o "Verificar". Deixado VAZIO de proposito:
+# em PRD, verificar antes de transferir deixava a janela num estado em que
+# o "Transferir" nao adotava nenhum item. Para voltar a usar, preencha com
+# wnd[1]/tbar[0]/btn[0]
+MIRO_BOTAO_CONTINUAR_PEDIDOS=
+MIRO_BOTAO_ADOTAR_PEDIDOS=wnd[1]/tbar[0]/btn[8]
+
+# --- Valor por item (grade de itens) ---------------------------------
+# {L} = numero da linha do item (0, 1, 2...)
+MIRO_VALOR_ITEM_LINHA=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/subITEMS:SAPLMR1M:6010/tabsITEMTAB/tabpITEMS_PO/ssubTABS:SAPLMR1M:6020/subITEM:SAPLMR1M:6310/tblSAPLMR1MTC_MR1M/txtDRSEG-WRBTR[3,{L}]
+
+# Coluna de PEDIDO dentro da grade de itens. AINDA NAO MAPEADA.
+# A ordem das linhas nao importa - o que importa e que cada valor caia
+# na linha do SEU pedido. Com este ID preenchido, o executor le o
+# pedido de cada linha e escreve o valor correspondente, em qualquer
+# ordem. Sem ele, so resta confiar na posicao, e o executor retem
+# qualquer nota cuja grade traga mais linhas que pedidos.
+# Capturado em QAS pelo TESTE_GRADE.vbs em agosto/2026.
+MIRO_PEDIDO_ITEM_LINHA=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/subITEMS:SAPLMR1M:6010/tabsITEMTAB/tabpITEMS_PO/ssubTABS:SAPLMR1M:6020/subITEM:SAPLMR1M:6310/tblSAPLMR1MTC_MR1M/txtDRSEG-EBELN[7,{L}]
+
+# Coluna do ITEM do pedido (posicao 10, 20...). Usada para diagnostico
+# quando o mesmo pedido aparece em mais de uma linha da grade.
+# Coluna da QUANTIDADE na grade de itens. Deixe VAZIO para o executor
+# descobrir sozinho (ele procura por DRSEG-MENGE e grava o ID achado em
+# IDS_DESCOBERTOS.txt). Preencha depois, colando a linha de la, para fixar.
+MIRO_QTD_ITEM_LINHA=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/subITEMS:SAPLMR1M:6010/tabsITEMTAB/tabpITEMS_PO/ssubTABS:SAPLMR1M:6020/subITEM:SAPLMR1M:6310/tblSAPLMR1MTC_MR1M/txtDRSEG-MENGE[4,{L}]
+MIRO_ITEM_PEDIDO_LINHA=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/subITEMS:SAPLMR1M:6010/tabsITEMTAB/tabpITEMS_PO/ssubTABS:SAPLMR1M:6020/subITEM:SAPLMR1M:6310/tblSAPLMR1MTC_MR1M/txtDRSEG-EBELP[8,{L}]
+
+# --- Aba "Detalhe" (= tabpHEADER_FI): tipo de NF ---------------------
+MIRO_ABA_DETALHE=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/tabsHEADER/tabpHEADER_FI
+MIRO_TIPO_NF=wnd[0]/usr/subHEADER_AND_ITEMS:SAPLMR1M:6005/tabsHEADER/tabpHEADER_FI/ssubHEADER_SCREEN:SAPLFDCB:0150/ctxtINVFO-J_1BNFTYPE
+
+# --- Tela da Nota Fiscal (botao "Nota Fiscal" da barra) --------------
+MIRO_BOTAO_NOTA_FISCAL=wnd[0]/tbar[1]/btn[21]
+NF_ABA=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8
+NF_DATA_PROCMTO=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8/ssubHEADER_TAB:SAPLJ1BB2:2800/subTIMESTAMP:SAPLJ1BB2:2803/ctxtJ_1BDYDOC-AUTHDATE
+NF_NUM_LOG=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8/ssubHEADER_TAB:SAPLJ1BB2:2800/subTIMESTAMP:SAPLJ1BB2:2803/subAUTHCODE_AREA:SAPLJ1BB2:2806/txtJ_1BDYDOC-AUTHCOD16
+NF_TP_EMISSAO=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8/ssubHEADER_TAB:SAPLJ1BB2:2800/subACCESS_KEY:SAPLJ1BB2:2808/subRANDOM_NUMBER:SAPLJ1BB2:2801/ctxtJ_1BNFE_DOCNUM9_DIVIDED-TPEMIS
+# 8 digitos: nSiteAutoriz(1) + codigo numerico cNF(7) da chave da NFCom,
+# ou seja, posicoes 36 a 43. O digito verificador o SAP calcula sozinho.
+NF_NUM_ALEATORIO=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8/ssubHEADER_TAB:SAPLJ1BB2:2800/subACCESS_KEY:SAPLJ1BB2:2808/subRANDOM_NUMBER:SAPLJ1BB2:2801/txtJ_1BNFE_DOCNUM9_DIVIDED-DOCNUM8
+NF_BOTAO_VOLTAR=wnd[0]/tbar[0]/btn[3]
+
+# HORARIO DO PROTOCOLO: E preenchido sim. Quando a nota nao discrimina
+# o horario, vai 00:00:00 - por isso a gravacao usada como referencia
+# nao mostrou digitacao nesse campo.
+# ATENCAO: este ID foi DEDUZIDO do mesmo container do AUTHDATE, nao
+# capturado numa gravacao. Se estiver errado, o executor falha ao
+# preencher a aba Nota Fiscal e RETEM a nota (falha fechada, nao grava
+# errado). Confirmar na primeira rodada em QAS.
+NF_TEMPO_PROCMTO=wnd[0]/usr/tabsTABSTRIP1/tabpTAB8/ssubHEADER_TAB:SAPLJ1BB2:2800/subTIMESTAMP:SAPLJ1BB2:2803/ctxtJ_1BDYDOC-AUTHTIME
+
+# MODELO DA NF (deve constar 62): nao apareceu na gravacao. E campo de
+# CONFERENCIA, nao de digitacao. Enquanto vazio, a conferencia do
+# modelo e feita so pelo Claude, sobre a chave (posicoes 21-22).
+NF_MODELO_NF=
+
+# --- Saldo (Diferenca) ------------------------------------------------
+# O executor SO lanca com este campo exatamente em 0,00. Se nao
+# conseguir ler o saldo, tambem nao lanca - sem poder provar que esta
+# zerado, a nota fica retida.
+# Vazio: o script procura o campo sozinho na tela e anota o ID que achou
+# num arquivo SALDO_ID.txt, ao lado. Cole aqui a linha que ele gerar,
+# para a busca nao se repetir a cada nota.
+MIRO_SALDO=wnd[0]/usr/txtRM08M-DIFFERENZ
+
+# --- Gravacao --------------------------------------------------------
+MIRO_BOTAO_SIMULAR=wnd[0]/tbar[1]/btn[43]
+# "Lancar", DENTRO da janela de simulacao
+MIRO_BOTAO_GRAVAR=wnd[1]/tbar[0]/btn[11]
+
+# PRE-LANCAMENTO (park). Nao apareceu na gravacao. Enquanto vazio, o
+# executor RECUSA lotes em MODO=PARK - nunca troca PARK por POST.
+MIRO_BOTAO_PRE_LANCAR=
+
+# --- Popup de empresa ------------------------------------------------
+# Nao apareceu nesta gravacao. Ele costuma aparecer na PRIMEIRA MIRO de
+# cada sessao. Se aparecer, gravar o ID aqui (algo como
+# wnd[1]/usr/ctxtBKPF-BUKRS). Enquanto vazio, o executor retem a nota
+# em vez de adivinhar o que fazer com uma janela inesperada.
+MIRO_POPUP_EMPRESA=
+
+# --- ME22N (conferencia previa do pedido) - opcional -----------------
+# Nao gravado. Enquanto vazio, o executor pula a conferencia previa e
+# confia nas validacoes da propria MIRO.
+ME22N_CAMPO_PEDIDO=
+
+# ---------------------------------------------------------------------
+# CORRECAO DA BASE DO IMPOSTO (divergencia de centavos no saldo)
+# IDs tirados da gravacao do proprio lancamento manual, 26/08.
+# ---------------------------------------------------------------------
+# tolerancia, em centavos, para o executor tentar corrigir sozinho.
+# Acima disso a nota fica retida - diferenca grande nao e arredondamento.
+NF_TOLERANCIA_CENTAVOS=3
+# aba com a lista de itens, dentro da tela Nota Fiscal
+NF_ABA_ITENS=wnd[0]/usr/tabsTABSTRIP1/tabpTAB1
+NF_TABELA_ITENS=wnd[0]/usr/tabsTABSTRIP1/tabpTAB1/ssubHEADER_TAB:SAPLJ1BB2:2100/tblSAPLJ1BB2ITEM_CONTROL
+# qualquer coluna serve: e so para dar foco na linha antes do F2
+NF_ITEM_COLUNA_FOCO=wnd[0]/usr/tabsTABSTRIP1/tabpTAB1/ssubHEADER_TAB:SAPLJ1BB2:2100/tblSAPLJ1BB2ITEM_CONTROL/ctxtJ_1BDYLIN-MATNR[4,{L}]
+# aba Imposto DENTRO do detalhe do item
+NF_ABA_IMPOSTO_ITEM=wnd[0]/usr/tabsITEM_TAB/tabpTAX
+NF_TABELA_IMPOSTO=wnd[0]/usr/tabsITEM_TAB/tabpTAX/ssubITEM_TABS:SAPLJ1BB2:3200/tblSAPLJ1BB2TAX_CONTROL
+# coluna do tipo de imposto - usada so para dar foco antes da calculadora
+NF_IMPOSTO_TIPO=wnd[0]/usr/tabsITEM_TAB/tabpTAX/ssubITEM_TABS:SAPLJ1BB2:3200/tblSAPLJ1BB2TAX_CONTROL/ctxtJ_1BDYSTX-TAXTYP[0,{L}]
+NF_IMPOSTO_BASE=wnd[0]/usr/tabsITEM_TAB/tabpTAX/ssubITEM_TABS:SAPLJ1BB2:3200/tblSAPLJ1BB2TAX_CONTROL/txtJ_1BDYSTX-BASE[3,{L}]
+NF_IMPOSTO_OUTRAS_BASES=wnd[0]/usr/tabsITEM_TAB/tabpTAX/ssubITEM_TABS:SAPLJ1BB2:3200/tblSAPLJ1BB2TAX_CONTROL/txtJ_1BDYSTX-OTHBAS[7,{L}]
+NF_BOTAO_CALCULADORA=wnd[0]/usr/tabsITEM_TAB/tabpTAX/ssubITEM_TABS:SAPLJ1BB2:3200/btnPB_CALCULATOR
+
+# Tipos da coluna TIPO DE NF que pertencem ao executor de NFCOM.
+# A planilha LOTE e compartilhada; o que nao esta aqui e do LANCAR_SERVICOS.vbs.
+TIPOS_NFCOM=TA

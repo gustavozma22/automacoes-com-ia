@@ -1,2 +1,8 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Não converter fim de linha dos scripts do Windows
+*.vbs -text
+*.bat -text
+*.ps1 -text
+*.txt -text
+*.docx binary
+*.png binary
+*.xlsx binary

@@ -1,0 +1,77 @@
+# =====================================================================
+#  MAPA_CAMPOS_BOLETO.txt  -  ids de tela usados pelo LANCAR_BOLETOS.vbs
+#  Descobertos pelas sondas VER_BOLETO1..6 em PRD/100, 08/10/2026.
+#  Mudou de layout? troque aqui, nao no codigo.
+# =====================================================================
+
+# ambientes liberados; a confirmacao e obrigatoria quando ha mais de um
+SAP_AMBIENTES_PERMITIDOS=PRD/100|QAS/200
+
+# --- passo 1: achar o documento contabil a partir do numero da MIRO ---
+TCODE_BUSCA=FB03
+BUSCA_BOTAO_LISTA=wnd[0]/tbar[1]/btn[20]
+BUSCA_EMPRESA=wnd[0]/usr/ctxtBR_BUKRS-LOW
+BUSCA_EXERCICIO=wnd[0]/usr/txtBR_GJAHR-LOW
+BUSCA_AWKEY=wnd[0]/usr/txtBR_AWKEY-LOW
+BUSCA_XBLNR=wnd[0]/usr/txtBR_XBLNR-LOW
+BUSCA_BELNR=wnd[0]/usr/txtBR_BELNR-LOW
+BUSCA_GRADE=wnd[0]/usr/cntlGRID1/shellcont/shell
+BUSCA_COL_DOC=BELNR
+
+# --- passo 2: abrir o documento para alteracao ---
+TCODE_ALTERA=FB02
+DOC_BELNR=wnd[0]/usr/txtRF05L-BELNR
+DOC_BUKRS=wnd[0]/usr/ctxtRF05L-BUKRS
+DOC_GJAHR=wnd[0]/usr/txtRF05L-GJAHR
+
+# --- passo 3: a linha do fornecedor ---
+# a grade e procurada varrendo a tela por GridView; este id e so conferencia
+LINHAS_GRADE=wnd[0]/usr/cntlCTRL_CONTAINERBSEG/shellcont/shell
+LINHAS_COL_CHAVE=BSCHL
+LINHAS_COL_CONTA=KTONR
+LINHAS_COL_MONTANTE=AZBET
+# chaves de lancamento que identificam a linha do fornecedor
+CHAVES_FORNECEDOR=31|21
+
+# --- passo 4: os dois campos ---
+ITEM_ZLSCH=wnd[0]/usr/ctxtBSEG-ZLSCH
+ITEM_BRCDE=wnd[0]/usr/txtRF05L-BRCDE
+ITEM_FORNECEDOR=wnd[0]/usr/ctxtLFA1-LIFNR
+ITEM_NOME=wnd[0]/usr/txtLFA1-NAME1
+ITEM_MONTANTE=wnd[0]/usr/txtBSEG-WRBTR
+
+BOTAO_SALVAR=wnd[0]/tbar[0]/btn[11]
+
+# formas de pagamento que NAO tem boleto (so recebem ZLSCH, sem codigo)
+FORMAS_SEM_BOLETO=S
+
+# formas de pagamento aceitas na coluna AN da planilha
+FORMAS_VALIDAS=O|S|X
+
+# S = reabre o documento depois de gravar e LE os dois campos de volta
+# como prova. N = confia na gravacao (mais rapido, menos seguro).
+CONFERIR_APOS_SALVAR=S
+
+# =====================================================================
+#  REGRA PERMANENTE - conferencia do fator de vencimento (valida desde
+#  10/2026, vale pra qualquer mes, nao so a pasta BOLETOS corrente)
+# =====================================================================
+# A prova real de que a linha digitavel esta correta sao os digitos
+# verificadores (3 de campo + 1 geral, mod10/mod11). A decodificacao do
+# fator de vencimento (posicoes 6-9 do codigo de barras) para uma data
+# e so uma conferencia AUXILIAR contra o vencimento impresso.
+#
+# Desde a virada de fevereiro/2025 (fator reiniciado em 1000), bancos
+# diferentes usam bases diferentes pro dia em que o fator virou 1000 -
+# divergencia documentada no mercado (Febraban/CIGAM: 21/02/2025 vs
+# Alterdata/Senior: 22/02/2025). Confirmado na pratica:
+#   banco 033 (Santander) -> base 21/02/2025
+#   banco 237 (Bradesco)      -> base 22/02/2025
+#
+# Se a conferencia auxiliar divergir do vencimento impresso por
+# exatamente 1 dia: NAO e erro, NAO trava o boleto. Teste as duas bases
+# (21/02 e 22/02/2025) pro fator daquele boleto antes de avisar. Se
+# bater com uma das duas, segue normal. Se nenhuma bater, ou a
+# diferenca for maior que 1 dia, use WebSearch pra checar comunicado
+# mais recente daquele banco antes de sinalizar divergencia real ao
+# usuario.
